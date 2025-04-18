@@ -1,0 +1,21 @@
+FROM wayland-client-glmark2-tests
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -y --allow-releaseinfo-change --allow-unauthenticated
+
+# Install necessary libraries
+RUN apt-get install -y --no-install-recommends \
+	nodejs npm \
+	libgtk-3-0 libnss3  libasound2t64 fonts-noto-color-emoji
+
+# create-electron-app requires git
+RUN apt-get install -y git --no-install-recommends
+
+ENV ELECTRON_OZONE_PLATFORM_HINT=wayland 
+ENV ELECTRON_DISABLE_SANDBOX=whatever 
+
+RUN mkdir /elect && cd /elect && npx -y create-electron-app my-app
+
+WORKDIR /elect/my-app
+
+CMD ["npm", "start"]
