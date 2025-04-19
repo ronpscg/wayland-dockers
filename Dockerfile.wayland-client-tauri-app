@@ -1,0 +1,51 @@
+FROM wayland-client-glmark2-tests
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -y --allow-releaseinfo-change --allow-unauthenticated
+
+# Install necessary libraries. nodejs and npm are used because we need to use npm to install npmi that Tauri/react requests
+RUN apt-get install -y --no-install-recommends \
+	nodejs npm
+
+RUN apt-get install -y --no-install-recommends \
+	libwebkit2gtk-4.1-dev   build-essential   curl   wget   file   libxdo-dev   libssl-dev   libayatana-appindicator3-dev   librsvg2-dev
+
+# Install rust and update the user's profile so that cargo et. al are available at their PATH
+# note the -s -- <further arguments come here> syntax.
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+# This is meant to resolve: 131.9     Bundling my-app_0.1.0_amd64.AppImage (/tauri/my-app/src-tauri/target/release/bundle/appimage/my-app_0.1.0_amd64.AppImage)
+#			    131.9 failed to bundle project: xdg-open binary not found: No such file or directory (os error 2)
+#			    131.9        Error failed to bundle project: xdg-open binary not found: No such file or directory (os error 2)
+RUN apt-get install -y --no-install-recommends xdg-utils
+
+# vim is useful to have for editing, it has nothing to do with any of the Tauri requirements
+RUN apt-get install -y --no-install-recommends vim
+
+
+#
+# Tauri scaffolding, building, and running alternatives start here
+#
+WORKDIR /tauri/my-app
+
+# Sourcing .profile in case only some of the docker build files steps are executed
+RUN . $HOME/.profile && cargo install create-tauri-app --locked
+
+# Sourcing .profile in case only some of the docker build files steps are executed
+RUN . $HOME/.profile &&  cd /tauri && cargo create-tauri-app my-app --template react -y \
+	&& cd my-app \
+	&& npm install \
+	&& npm install pnpm
+
+WORKDIR /tauri/my-app
+# Uncomment to build release and have your output at build
+# You can select which bundles to bundle, if at all (alien packaging system bundles will take a lot of time)
+# RUN . $HOME/.profile && npm run tauri build
+
+# Uncomment to build debug - if you also build release it will remove dist
+RUN . $HOME/.profile && npm run tauri build -- --debug
+
+
+# CMD bash
+# You can run this to illustrate hot reloads, if you open another terminal and edit a file or two
+CMD ["npm", "run", "tauri", "dev"]
